@@ -50,39 +50,46 @@
             box-sizing: border-box;
             background-color: #fff;
         }
+        
+        /* 📱 거대 박스를 제거한 컴팩트 좌우 양분 버튼 레이아웃 */
         .input-container {
             display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
+            gap: 12px;
+            margin-bottom: 10px;
+            width: 100%;
         }
-        .card {
+        .action-btn {
             flex: 1;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s;
-            box-sizing: border-box;
-            min-height: 120px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .upload-box { border: 2px dashed var(--blue-color); background-color: #f4f9ff; }
-        .record-box { border: 2px dashed var(--green-color); background-color: #f5fff6; }
-        .card h3 { margin: 0 0 8px 0; font-size: 16px; word-break: keep-all; }
-        .card p { margin: 0; font-size: 12px; color: #666; word-break: keep-all; }
-        .active-card { transform: scale(0.98); box-shadow: inset 0 2px 8px rgba(0,0,0,0.1); }
+        .upload-btn { background-color: var(--blue-color); }
+        .upload-btn:active { background-color: #0b7dda; transform: scale(0.98); }
+        .record-btn { background-color: var(--green-color); }
+        .record-btn:active { background-color: #3d8b40; transform: scale(0.98); }
         
-        @media (max-width: 768px) { .input-container { flex-direction: column; } }
-        .upload-box *, .record-box * { white-space: normal !important; word-break: break-all !important; }
+        /* 현재 선택 상태를 직관적으로 알려주는 가벼운 텍스트 공간 */
+        .status-text {
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 500;
+            word-break: break-all;
+        }
         
-        /* 🎵 시각적 확인을 위한 오디오 플레이어 스타일 */
         .preview-player-container {
             margin-bottom: 25px;
             background: #f9f9f9;
-            padding: 10px;
+            padding: 12px;
             border-radius: 8px;
             border: 1px solid #eee;
             display: none;
@@ -115,6 +122,7 @@
             color: white;
             font-weight: bold;
             font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         .midi-btn { background-color: #ff9800; }
         .pdf-btn { background-color: #e91e63; }
@@ -131,24 +139,17 @@
     
     <div class="server-box">
         <label for="server-url">🔗 구글 코랩 주소 (Gradio Live URL)</label>
-        <input type="text" id="server-url" value="https://f2b4c10ab80645b5ed.gradio.live">
+        <input type="text" id="server-url" value="https://fea12f182b52e85db2.gradio.live">
     </div>
     
-    <div class="input-container" id="input-container">
-        <!-- 💡 Bug Fix: accept 속성에 명시적 확장자를 추가해 아이폰 먹통 현상 해결 -->
-        <div class="card upload-box" id="btn-upload-view">
-            <h3 style="color: var(--blue-color);">📁 파일 업로드</h3>
-            <p id="upload-status">선택된 파일 없음</p>
-            <input type="file" id="file-input" accept=".mp3, .m4a, .wav, .aac, .mp4, audio/*" style="display: none;">
-        </div>
-        
-        <div class="card record-box" id="btn-record-view">
-            <h3 style="color: var(--green-color);" id="record-title">🎙️ 직접 녹음</h3>
-            <p id="record-status">탭하여 녹음 시작</p>
-        </div>
+    <!-- 📱 효율적인 공간 활용을 위한 양분 버튼 구조 -->
+    <div class="input-container">
+        <button class="action-btn upload-btn" id="btn-upload">📁 파일 업로드</button>
+        <button class="action-btn record-btn" id="btn-record">🎙️ 직접 녹음</button>
+        <input type="file" id="file-input" accept=".mp3, .m4a, .wav, .aac, .mp4, audio/*" style="display: none;">
     </div>
+    <div class="status-text" id="status-text">준비된 오디오가 없습니다.</div>
 
-    <!-- 🎵 오디오 업로드/녹음 확인용 선율 플레이어 영역 -->
     <div class="preview-player-container" id="player-container">
         <h4 id="player-title">🔊 입력된 오디오 파형 확인</h4>
         <audio id="audio-preview" controls></audio>
@@ -159,8 +160,8 @@
     
     <div class="result-box" id="result-area">
         <div class="download-links">
-            <a id="download-midi" class="btn-download midi-btn" href="#" target="_blank">🎵 MIDI 다운로드</a>
-            <a id="download-pdf" class="btn-download pdf-btn" href="#" target="_blank">📄 PDF 다운로드</a>
+            <a id="download-midi" class="btn-download midi-btn" href="#">🎵 MIDI 다운로드</a>
+            <a id="download-pdf" class="btn-download pdf-btn" href="#">📄 PDF 다운로드</a>
         </div>
         <div class="preview-box">
             <h4>👀 생성된 악보 미리보기</h4>
@@ -178,6 +179,7 @@
     let isRecording = false;
 
     const urlInput = document.getElementById('server-url');
+    const statusText = document.getElementById('status-text');
     const playerContainer = document.getElementById('player-container');
     const audioPreview = document.getElementById('audio-preview');
 
@@ -185,33 +187,28 @@
         document.getElementById('btn-submit').disabled = !e.target.value;
     });
 
-    // 플레이어에 소리 파일을 바인딩하여 파형/상태를 보여주는 함수
     function showAudioPreview(file) {
         const fileURL = URL.createObjectURL(file);
         audioPreview.src = fileURL;
         playerContainer.style.display = 'block';
     }
 
-    // --- [파일 업로드 로직] ---
-    const uploadView = document.getElementById('btn-upload-view');
+    // --- [파일 업로드] ---
+    const uploadBtn = document.getElementById('btn-upload');
     const fileInput = document.getElementById('file-input');
-    uploadView.addEventListener('click', () => fileInput.click());
+    uploadBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', (e) => {
         if(e.target.files.length > 0) {
             selectedFile = e.target.files[0];
-            document.getElementById('upload-status').innerText = selectedFile.name;
-            document.getElementById('record-status').innerText = "파일 모드 활성화됨";
-            uploadView.classList.add('active-card');
-            document.getElementById('btn-record-view').classList.remove('active-card');
-            
-            document.getElementById('player-title').innerText = "📁 업로드된 파일 확인";
-            showAudioPreview(selectedFile); // 시각 피드백 제공
+            statusText.innerHTML = `📁 선택된 파일: <b style="color:var(--blue-color);">${selectedFile.name}</b>`;
+            document.getElementById('player-title').innerText = "📁 업로드된 파일 선율 확인";
+            showAudioPreview(selectedFile);
         }
     });
 
-    // --- [마이크 직접 녹음 로직] ---
-    const recordView = document.getElementById('btn-record-view');
-    recordView.addEventListener('click', async () => {
+    // --- [마이크 직접 녹음] ---
+    const recordBtn = document.getElementById('btn-record');
+    recordBtn.addEventListener('click', async () => {
         if (!isRecording) {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -221,27 +218,25 @@
                 mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
                 mediaRecorder.onstop = () => {
                     selectedFile = new File([new Blob(audioChunks, { type: 'audio/mp4' })], "recording.mp4", { type: "audio/mp4" });
-                    document.getElementById('record-status').innerText = "녹음 완료! 전송 준비됨";
-                    document.getElementById('upload-status').innerText = "선택된 파일 없음";
-                    
+                    statusText.innerHTML = `🎙️ 녹음본이 준비되었습니다. (하단 플레이어 확인)`;
                     document.getElementById('player-title').innerText = "🎙️ 녹음된 음성 확인";
-                    showAudioPreview(selectedFile); // 시각 피드백 제공
+                    showAudioPreview(selectedFile);
                 };
                 
                 mediaRecorder.start();
                 isRecording = true;
-                document.getElementById('record-title').innerText = "🛑 녹음 중...";
-                document.getElementById('record-status').innerText = "다시 탭하면 완료";
-                recordView.classList.add('active-card');
-                uploadView.classList.remove('active-card');
-                playerContainer.style.display = 'none'; // 녹음 중엔 숨김
+                recordBtn.innerText = "🛑 녹음 중단";
+                recordBtn.style.backgroundColor = "#d32f2f";
+                statusText.innerText = "🎙️ 피아노 연주를 녹음하고 있습니다...";
+                playerContainer.style.display = 'none';
             } catch (err) {
                 alert("마이크 연결 실패: 사파리/크롬 주소창에 직접 주소를 입력했는지 확인해 주세요.");
             }
         } else {
             mediaRecorder.stop();
             isRecording = false;
-            document.getElementById('record-title').innerText = "🎙️ 직접 녹음";
+            recordBtn.innerText = "🎙️ 직접 녹음";
+            recordBtn.style.backgroundColor = "var(--green-color)";
         }
     });
 
@@ -263,14 +258,30 @@
             const result = await app.predict("/transcribe_piano", args);
             const data = result.data;
 
+            // 1. MIDI 링크 주입 및 다운로드 설정
             if(data[0] && data[0].url) {
-                document.getElementById('download-midi').href = data[0].url;
+                const midiBtn = document.getElementById('download-midi');
+                midiBtn.href = data[0].url;
+                midiBtn.setAttribute('download', 'piano_transcription.mid');
             }
+            
+            // 2. 🛡️ PDF 먹통 버그 원천 방지 UI 예외 처리
+            const pdfBtn = document.getElementById('download-pdf');
             if(data[1] && data[1].url) {
-                document.getElementById('download-pdf').href = data[1].url;
+                pdfBtn.href = data[1].url;
+                pdfBtn.setAttribute('download', 'piano_sheet.pdf');
+                pdfBtn.style.backgroundColor = '#e91e63';
+                pdfBtn.style.pointerEvents = 'auto';
+                pdfBtn.innerText = "📄 PDF 다운로드";
             } else {
-                document.getElementById('download-pdf').removeAttribute('href');
+                // PDF 생성 실패 시 유저가 허탈하게 누르지 않도록 즉시 비활성화 스타일 적용
+                pdfBtn.removeAttribute('href');
+                pdfBtn.style.backgroundColor = '#ccc';
+                pdfBtn.style.pointerEvents = 'none';
+                pdfBtn.innerText = "📄 PDF 제공 불가";
             }
+            
+            // 3. 악보 이미지 미리보기 주입
             if(data[2] && data[2].url) {
                 const imgNode = document.getElementById('sheet-img');
                 imgNode.src = data[2].url;
@@ -279,7 +290,7 @@
 
             document.getElementById('result-area').style.display = 'block';
         } catch (error) {
-            alert("서버 연결 실패! 코랩 창이 켜져 있고 주소가 유효한지 확인해 주세요.");
+            alert("서ver 연결 실패! 코랩 창이 제대로 켜져 있는지 확인해 주세요.");
             console.error(error);
         } finally {
             document.getElementById('loading').style.display = 'none';
