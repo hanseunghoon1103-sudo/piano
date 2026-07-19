@@ -1,1 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 피아노 채보 App</title>
+    <style>
+        :root {
+            --blue-color: #2196F3;
+            --green-color: #4CAF50;
+            --dark-color: #333;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            color: var(--dark-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        /* 서버 주소 입력창 (보내주신 주소 기본 고정) */
+        .server-box {
+            background: #eef2f7;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .server-box label { font-size: 12px; font-weight: bold; display: block; margin-bottom: 5px; }
+        .server-box input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            background-color: #fff;
+        }
+        /* 입력 영역 레이아웃 (모바일 세로 자동 전환) */
+        .input-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .card {
+            flex: 1;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-sizing: border-box;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .upload-box {
+            border: 2px dashed var(--blue-color);
+            background-color: #f4f9ff;
+        }
+        .record-box {
+            border: 2px dashed var(--green-color);
+            background-color: #f5fff6;
+        }
+        .card h3 { margin: 0 0 8px 0; font-size: 16px; word-break: keep-all; }
+        .card p { margin: 0; font-size: 12px; color: #666; word-break: keep-all; }
+        .active-card { transform: scale(0.98); box-shadow: inset 0 2px 8px rgba(0,0,0,0.1); }
+        
+        @media (max-width: 768px) {
+            .input-container { flex-direction: column; }
+        }
+        
+        /* 모바일 글자 잘림 방지 및 자동 줄바꿈 */
+        .upload-box *, .record-box * { 
+            white-space: normal !important; 
+            word-break: break-all !important;
+        }
+        
+        /* 악보 생성 버튼 */
+        .submit-btn {
+            width: 100%;
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 25px;
+        }
+        .submit-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        
+        /* 결과 및 다운로드 영역 */
+        .result-box { display: none; border-top: 1px solid #eee; padding-top: 20px; }
+        .download-links { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn-download {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            border-radius: 6px;
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .midi-btn { background-color: #ff9800; }
+        .pdf-btn { background-color: #e91e63; }
+        
+        /* 악보 이미지 미리보기 */
+        .preview-box h4 { margin: 0 0 10px 0; }
+        .preview-img { width: 100%; border: 1px solid #ddd; border-radius: 8px; display: none; }
+        
+        /* 로딩 애니메이션 */
+        #loading { display: none; text-align: center; margin-bottom: 15px; font-weight: bold; color: var(--blue-color); }
+    </style>
+</head>
+<body>
 
+<div class="container">
+    <h1>🎹 AI 피아노 채보 App</h1>
+    
+    <!-- 1. 코랩 주소 자동 고정 완료 -->
+    <div class="server-box">
+        <label for="server-url">🔗 구글 코랩 주소 (Gradio Live URL)</label>
+        <input type="text" id="server-url" value="https://4f6e35f4dac9fdf60b.gradio.live">
+    </div>
+    
+    <!-- 2. 좌우 분할 입력 영역 (모바일은 세로 배치) -->
+    <div class="input-container" id="input-container">
+        <!-- 파일 업로드 카드 (파란색) -->
+        <div class="card upload-box" id="btn-upload-view">
+            <h3 style="color: var(--blue-color);">📁 파일 업로드</h3>
+            <p id="upload-status">선택된 파일 없음</p>
+            <input type="file" id="file-input" accept="audio/*" style="display: none;">
+        </div>
+        
+        <!-- 직접 녹음 카드 (초록색) -->
+        <div class="card record-box" id="btn-record-view">
+            <h3 style="color: var(--green-color);" id="record-title">🎙️ 직접 녹음</h3>
+            <p id="record-status">탭하여 녹음 시작</p>
+        </div>
+    </div>
+    
+    <!-- 3. 실행 버튼 및 상태 표시 -->
+    <div id="loading">🎼 AI가 피아노 선율을 악보로 그리는 중...</div>
+    <button class="submit-btn" id="btn-submit">🎼 악보 생성하기</button>
+    
+    <!-- 4. 결과 출력 영역 (다운로드 하단 이미지 즉시 배치) -->
+    <div class="result-box" id="result-area">
+        <div class="download-links">
+            <a id="download-midi" class="btn-download midi-btn" href="#" target="_blank">🎵 MIDI 다운로드</a>
+            <a id="download-pdf" class="btn-download pdf-btn" href="#" target="_blank">📄 PDF 다운로드</a>
+        </div>
+        <div class="preview-box">
+            <h4>👀 생성된 악보 미리보기</h4>
+            <img id="sheet-img" class="preview-img" src="" alt="악보 이미지">
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.js";
+
+    let selectedFile = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isRecording = false;
+
+    const urlInput = document.getElementById('server-url');
+
+    // 주소가 처음부터 채워져 있으므로 수동 변경이 있을 때만 로컬스토리지 갱신
+    urlInput.addEventListener('input', (e) => {
+        document.getElementById('btn-submit').disabled = !e.target.value;
+    });
+
+    // --- [파일 업로드 로직] ---
+    const uploadView = document.getElementById('btn-upload-view');
+    const fileInput = document.getElementById('file-input');
+    uploadView.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+        if(e.target.files.length > 0) {
+            selectedFile = e.target.files[0];
+            document.getElementById('upload-status').innerText = selectedFile.name;
+            document.getElementById('record-status').innerText = "파일 모드 활성화됨";
+            uploadView.classList.add('active-card');
+            document.getElementById('btn-record-view').classList.remove('active-card');
+        }
+    });
+
+    // --- [마이크 직접 녹음 로직] ---
+    const recordView = document.getElementById('btn-record-view');
+    recordView.addEventListener('click', async () => {
+        if (!isRecording) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+                mediaRecorder.onstop = () => {
+                    selectedFile = new File([new Blob(audioChunks, { type: 'audio/mp4' })], "recording.mp4", { type: "audio/mp4" });
+                    document.getElementById('record-status').innerText = "녹음 완료! 전송 준비됨";
+                    document.getElementById('upload-status').innerText = "선택된 파일 없음";
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById('record-title').innerText = "🛑 녹음 중...";
+                document.getElementById('record-status').innerText = "다시 탭하면 완료";
+                recordView.classList.add('active-card');
+                uploadView.classList.remove('active-card');
+            } catch (err) {
+                alert("마이크 연결 실패: 사파리/크롬 주소창에 직접 주소를 입력했는지 확인해 주세요.");
+            }
+        } else {
+            mediaRecorder.stop();
+            isRecording = false;
+            document.getElementById('record-title').innerText = "🎙️ 직접 녹음";
+        }
+    });
+
+    // --- [코랩 AI 서버 연동 및 결과 출력] ---
+    document.getElementById('btn-submit').addEventListener('click', async () => {
+        const url = urlInput.value.trim();
+        if(!url || !selectedFile) return alert("오디오 파일이나 녹음을 먼저 준비해 주세요!");
+        
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('btn-submit').disabled = true;
+        document.getElementById('result-area').style.display = 'none';
+
+        try {
+            const app = await Client.connect(url);
+            
+            const isMic = selectedFile.name === "recording.mp4";
+            const args = isMic ? [null, selectedFile] : [selectedFile, null];
+            
+            const result = await app.predict("/transcribe_piano", args);
+            const data = result.data;
+
+            // MIDI 결과 매핑
+            if(data[0] && data[0].url) {
+                document.getElementById('download-midi').href = data[0].url;
+            }
+            // PDF 결과 매핑
+            if(data[1] && data[1].url) {
+                document.getElementById('download-pdf').href = data[1].url;
+                document.getElementById('download-pdf').style.display = 'inline-block';
+            } else {
+                document.getElementById('download-pdf').removeAttribute('href');
+            }
+            // 악보 이미지 미리보기 매핑
+            if(data[2] && data[2].url) {
+                const imgNode = document.getElementById('sheet-img');
+                imgNode.src = data[2].url;
+                imgNode.style.display = 'block';
+            }
+
+            document.getElementById('result-area').style.display = 'block';
+        } catch (error) {
+            alert("서버 연결 실패! 코랩 창이 켜져 있고 주소가 유효한지 확인해 주세요.");
+            console.error(error);
+        } finally {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('btn-submit').disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
