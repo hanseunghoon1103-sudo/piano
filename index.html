@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <!-- ⚙️ [코랩 서버 주소 설정] 코랩 주소가 바뀌면 아래 URL만 바로 수정하세요! -->
+    <script>
+        const MY_COLAB_URL = "https://fea12f182b52e85db2.gradio.live";
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 피아노 채보 App</title>
@@ -51,7 +56,6 @@
             background-color: #fff;
         }
         
-        /* 📱 거대 박스를 제거한 컴팩트 좌우 양분 버튼 레이아웃 */
         .input-container {
             display: flex;
             gap: 12px;
@@ -76,7 +80,6 @@
         .record-btn { background-color: var(--green-color); }
         .record-btn:active { background-color: #3d8b40; transform: scale(0.98); }
         
-        /* 현재 선택 상태를 직관적으로 알려주는 가벼운 텍스트 공간 */
         .status-text {
             font-size: 13px;
             color: #666;
@@ -139,10 +142,10 @@
     
     <div class="server-box">
         <label for="server-url">🔗 구글 코랩 주소 (Gradio Live URL)</label>
-        <input type="text" id="server-url" value="https://fea12f182b52e85db2.gradio.live">
+        <!-- value가 상단의 MY_COLAB_URL 변수값으로 자동 연동됩니다 -->
+        <input type="text" id="server-url" value="">
     </div>
     
-    <!-- 📱 효율적인 공간 활용을 위한 양분 버튼 구조 -->
     <div class="input-container">
         <button class="action-btn upload-btn" id="btn-upload">📁 파일 업로드</button>
         <button class="action-btn record-btn" id="btn-record">🎙️ 직접 녹음</button>
@@ -182,6 +185,9 @@
     const statusText = document.getElementById('status-text');
     const playerContainer = document.getElementById('player-container');
     const audioPreview = document.getElementById('audio-preview');
+
+    // 💡 HTML 맨 위 스크립트 블록에 선언한 고정 주소를 인풋 창에 자동 할당
+    urlInput.value = MY_COLAB_URL;
 
     urlInput.addEventListener('input', (e) => {
         document.getElementById('btn-submit').disabled = !e.target.value;
@@ -258,14 +264,12 @@
             const result = await app.predict("/transcribe_piano", args);
             const data = result.data;
 
-            // 1. MIDI 링크 주입 및 다운로드 설정
             if(data[0] && data[0].url) {
                 const midiBtn = document.getElementById('download-midi');
                 midiBtn.href = data[0].url;
                 midiBtn.setAttribute('download', 'piano_transcription.mid');
             }
             
-            // 2. 🛡️ PDF 먹통 버그 원천 방지 UI 예외 처리
             const pdfBtn = document.getElementById('download-pdf');
             if(data[1] && data[1].url) {
                 pdfBtn.href = data[1].url;
@@ -274,14 +278,12 @@
                 pdfBtn.style.pointerEvents = 'auto';
                 pdfBtn.innerText = "📄 PDF 다운로드";
             } else {
-                // PDF 생성 실패 시 유저가 허탈하게 누르지 않도록 즉시 비활성화 스타일 적용
                 pdfBtn.removeAttribute('href');
                 pdfBtn.style.backgroundColor = '#ccc';
                 pdfBtn.style.pointerEvents = 'none';
                 pdfBtn.innerText = "📄 PDF 제공 불가";
             }
             
-            // 3. 악보 이미지 미리보기 주입
             if(data[2] && data[2].url) {
                 const imgNode = document.getElementById('sheet-img');
                 imgNode.src = data[2].url;
@@ -290,7 +292,7 @@
 
             document.getElementById('result-area').style.display = 'block';
         } catch (error) {
-            alert("서ver 연결 실패! 코랩 창이 제대로 켜져 있는지 확인해 주세요.");
+            alert("서버 연결 실패! 코랩 창이 제대로 켜져 있는지 확인해 주세요.");
             console.error(error);
         } finally {
             document.getElementById('loading').style.display = 'none';
